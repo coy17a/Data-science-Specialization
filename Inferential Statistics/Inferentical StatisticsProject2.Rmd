@@ -1,0 +1,109 @@
+---
+title: 'Peer-graded Assignment: Statistical Inference Course ProjectPart 2'
+author: "Alejandro Coy"
+date: '2019-02-15'
+output:
+  word_document: default
+  html_document: default
+---
+
+# Part 2: Basic inferential data analysis. :
+
+ The datased is imported and basic data information is obtained with the following functions: 
+
+``` {r echo=TRUE}
+library(datasets)
+library(dplyr)
+library(ggplot2)
+data <- ToothGrowth
+glimpse(data)
+str(data)
+head(data)
+```
+### Summary of the data:
+Description
+
+The response is the length of odontoblasts (cells responsible for tooth growth) in 60 guinea pigs. Each animal received one of three dose levels of vitamin C (0.5, 1, and 2 mg/day) by one of two delivery methods, orange juice or ascorbic acid (a form of vitamin C and coded as VC).
+
+Usage
+
+ToothGrowth
+Format
+
+A data frame with 60 observations on 3 variables.
+
+[,1]	len	numeric	Tooth length
+[,2]	supp	factor	Supplement type (VC or OJ).
+[,3]	dose	numeric	Dose in milligrams/day
+
+### Exploratory data analysis
+
+```{r echo=TRUE}
+ggplot(data,aes(factor(dose),y=len,fill=factor(dose)))+
+  geom_boxplot()+
+  facet_wrap(~supp)+
+  theme_bw()+
+  labs(x="Dose in mm",y="Tooth Lenght",fill="Suppy Method")
+```
+
+From the plot it can be seen the dose seems to have an effect in the tooth groth. However, it is not clear that the supplement type have an effect. 
+
+### Hypothesis Testing
+
+To compare the effect of the doses we will be using hypothesis testing between the three doses. First we have to filter the data by dose
+
+```{r echo=TRUE}
+dose_0.5 <- data %>%
+  filter(dose == 0.5)
+dose_1 <- data %>%
+  filter(dose == 1)
+dose_2 <- data %>%
+  filter(dose == 2)
+#t-tes Between doses
+t.test(dose_0.5$len,dose_1$len,paired = FALSE)
+t.test(dose_0.5$len,dose_2$len,paired = FALSE)
+t.test(dose_1$len,dose_2$len,paired = FALSE)
+
+```
+
+From these results it can be infered that there is a significant difference between each on of the doses. The interval of confidence can be esay compute using conf 
+
+```{r echo=TRUE}
+t.test(dose_0.5$len,dose_1$len,paired = FALSE)$conf
+t.test(dose_0.5$len,dose_2$len,paired = FALSE)$conf
+t.test(dose_1$len,dose_2$len,paired = FALSE)$conf
+```
+
+Now we can compare betwen supplement type. Since we have stablished that the dose has a significant effect, the suplement type will be compare for each of doses and not between them. 
+
+``` {r echo=TRUE}
+
+vc_0.5 <- data %>%
+  filter(dose == 0.5, supp =="VC")
+vc_1 <- data %>%
+  filter(dose == 1, supp =="VC")
+vc_2 <- data %>%
+  filter(dose == 2, supp =="VC")
+oj_0.5 <- data %>%
+  filter(dose == 0.5, supp =="OJ")
+oj_1 <- data %>%
+  filter(dose == 1, supp =="OJ")
+oj_2 <- data %>%
+  filter(dose == 2, supp =="OJ")
+#Hypothesis testin
+t.test(vc_0.5$len,oj_0.5$len,paired = FALSE)
+t.test(vc_1$len,oj_1$len,paired = FALSE)
+t.test(vc_2$len,oj_2$len,paired = FALSE)
+# Confidence Intervals
+t.test(vc_0.5$len,oj_0.5$len,paired = FALSE)$conf
+t.test(vc_1$len,oj_1$len,paired = FALSE)$conf
+t.test(vc_2$len,oj_2$len,paired = FALSE)$conf
+```
+
+From the result we can see that the supplmenet type has a signifcant effect for doses of 0.5 a 1 mg/day. In the case the 2 mg/day there is not change in the tooth growth by changing the supplment type. 
+
+### Conclusions 
+
+As conclusion the dose has a significant effect in the tooth growth. The confidence didn't contain 0 and they were negative. This indicate that increase of doses yield greater growth. 
+
+In the case of the supplement type, the effect was just seen in the 0.5 and 1 mg.day dose. The intervals were negative, indicating that Orange Juice was a better delivery method. For the case of dose 2, there is not significant difference in the growth.

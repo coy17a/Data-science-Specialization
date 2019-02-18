@@ -1,0 +1,148 @@
+---
+title: "FinalProjectRS JH"
+author: "Alejandro Coy"
+date: '2019-02-12'
+output:
+  html_document: default
+  pdf_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+### Peer-graded Assignment: Course Project 2
+
+##Introduction
+
+Storms and other severe weather events can cause both public health and economic problems for communities and municipalities. Many severe events can result in fatalities, injuries, and property damage, and preventing such outcomes to the extent possible is a key concern.
+
+This project involves exploring the U.S. National Oceanic and Atmospheric Administration's (NOAA) storm database. This database tracks characteristics of major storms and weather events in the United States, including when and where they occur, as well as estimates of any fatalities, injuries, and property damage.
+
+The two question this project addrest to respones are the following:
+
+1. Across the United States, which types of events are most harmful with respect to population health?
+
+2. Across the United States, which types of events have the greatest economic consequences?
+
+
+## Data Analysis
+
+The data was subset in two data frames aiming to response each question. These two data frames contains just the columns necesseary for the analysis. The data was fruther filter for rows with numeric values greater than 0, grouped by group by event type and finally sumarized by sum of the varible of interest. 
+
+##Importing Data
+
+The package readr is used to read the file and save it in a data frame called "data". Summary of the data is presented using summary() function. 
+
+```{r, echo=TRUE}
+library(readr)
+library(dplyr)
+library(ggplot2)
+library(tidyr)
+
+data <- read_csv("repdata_data_StormData.csv.bz2")
+names(data)
+summary(data)
+```
+
+## Data Proccesing 
+The data strategy was to divide the data in two dataframes to answer each question. 
+
+### Most Harmful Events
+
+In order to address the first question the amount of fatalities and injures were considered. The strategy for this project was to add the number of fatalities and injuries for each type of the event and then rank them. The events with total incidents above 1000 were selected and then the data was transformed to tidy data set using the gather function
+
+All the analysis was done uing dplyr package.
+
+
+```{r, echo=FALSE}
+by_event <- data %>%
+  select(EVTYPE, FATALITIES, INJURIES,STATE)%>%
+  filter(FATALITIES > 0 | INJURIES >0 )%>%
+  group_by(EVTYPE)%>%
+  summarize(Fatalities = sum(FATALITIES),Injuries=sum(INJURIES))%>%
+  mutate( TOTAL = Fatalities + Injuries)%>%
+  arrange(desc(TOTAL))%>%
+  #Events filter with more than 1000 Incidents
+  filter(TOTAL > 1000) %>%
+  gather(key="Harm",value="Amount", 2:3)
+```
+### Most Costly Events 
+To calculate the cost impact from the weather events the damge in porperty and the damage in crops need to be considered. Due to how the data is presented is needed it to tranlate the dollar amount reported with the correpondent index to have all the cost in the same units(billions of dollars). 
+```{r echo=TRUE}
+valid_ex<- c("M","m","B","H","h","K","k")
+pdamage <- data %>%
+  select(EVTYPE,PROPDMG,PROPDMGEXP)%>%
+  filter(!is.na(PROPDMGEXP))%>%
+  group_by(PROPDMGEXP,EVTYPE)%>%
+  summarise(total = sum(PROPDMG))%>%
+  filter(PROPDMGEXP %in% valid_ex)
+
+fromMtoB <- pdamage$PROPDMGEXP == "M" | pdamage$PROPDMGEXP == "m"
+fromktoB <- pdamage$PROPDMGEXP == "K" | pdamage$PROPDMGEXP == "k"
+fromhtoB <- pdamage$PROPDMGEXP == "H" | pdamage$PROPDMGEXP == "h"
+
+pdamage$total[fromMtoB] <- pdamage$total[fromMtoB]/1000
+pdamage$total[fromktoB] <- pdamage$total[fromktoB]/1000000
+pdamage$total[fromhtoB] <- pdamage$total[fromhtoB]/1000000000
+```
+Once the dollar amount is transfromed in the same units,  the total amount can be calculated and the events are rank in descendet order. 
+```{r echo=TRUE}
+pdamageTotal <- pdamage %>%
+  group_by(EVTYPE) %>%
+  summarize(totalProp_damage = sum(total))%>%
+  arrange(desc(totalProp_damage))
+```
+
+For the crop damage there were not index reports, so it is assumed that the amount presented is in dollars. The data is grouped by event and the total amount in damage to the crops is summarized. 
+```{r echo=TRUE}
+#cropDamage
+cdamage <- data %>%
+  select(EVTYPE,CROPDMG,CROPDMGEXP)%>%
+  filter(CROPDMG >0)%>%
+  group_by(EVTYPE)%>%
+  summarise(totalCrop_damage = sum(CROPDMG)/1000000)%>%
+  arrange(desc(totalCrop_damage))
+```
+Finally the data for property damage and crop damage is joined in the compilation data frame and a new column is created with the sum of property damage and crop damage for each event type. 
+```{r, echo=TRUE}
+compilation <- left_join(pdamageTotal,cdamage,by="EVTYPE") %>%
+  #replace Na with 0
+  mutate_all(funs(replace(.,is.na(.),0))) %>%
+  mutate(Total = totalCrop_damage + totalProp_damage)
+#Events filter with more than 2 billion in damage
+```
+
+
+## Results
+
+### Most Harmful Weather Events ins USA(1950-2011)
+
+To response the first questions the type of plot selected was a bar plot with the coordinates flip so the events are in the Y axis. As can been seen from the graph is clearly that Tornado is the most Harmful event in the USA in the period of 1950-2011.
+
+```{r, echo= TRUE}
+ggplot(by_event)+
+  aes(x=reorder(EVTYPE,-TOTAL),y= Amount, fill= Harm)+
+  geom_bar(stat = "identity")+
+  coord_flip()+
+  labs(y="Total Harmful Events", x = "",title="Weather Events Most Harmful to Population USA(1950-2011)")+
+  theme_minimal()
+```
+
+
+### Most Costly Weather Events ins USA(1950-2011)
+
+The events with cost related damege over 2 billions are ploted. In terms of the cost the flood event is ranked number one follow by Hurricane and Tornados. Once again ggplot is used to plot the results.  
+
+```{r, echo=TRUE}
+ggplot(filter(compilation,compilation$Total > 2))+
+  aes(x=reorder(EVTYPE,-Total),y= Total)+
+  geom_bar(stat = "identity",fill="brown")+
+  coord_flip()+
+  labs(y="Total Cost in damage(Billions)", x = "",title="Weather Events Most Costly in USA(1950-2011)")+
+  theme_minimal()
+```
+
+
+
+
