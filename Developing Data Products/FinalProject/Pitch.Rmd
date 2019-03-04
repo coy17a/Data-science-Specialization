@@ -1,0 +1,93 @@
+---
+title: "Wasa Triathlon EDA App"
+author: "Alejandro Coy"
+date: '2019-03-04'
+output: ioslides_presentation
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+library(shiny)
+library(ggplot2)
+library(gridExtra)
+library(dplyr)
+library(lubridate)
+library(stringr)
+library(tidyr)
+library(readxl)
+
+#--------------------------------------------------------
+wasaData18 <- read_excel("wasaData.xlsx", sheet = "2018")
+wasaData17 <- read_excel("wasaData.xlsx", sheet = "2017")
+wasaData16 <- read_excel("wasaData.xlsx", sheet = "2016")
+wasaData15 <- read_excel("wasaData.xlsx", sheet = "2015")
+
+wasaData18 <- rename(wasaData18, Division ="20")
+cleandata <- function(x,y) {
+  x %>%
+    rename(category ="Division",age_group = "Place/Division",genderP ="Place/Gender")%>%
+    separate(age_group,into = c("AgePosition","ToalAge"), sep = "/")%>%
+    separate(genderP,into = c("GenderPosition","ToaGender"), sep = "/")%>%
+    separate(Place,into = c("Position","TotalP"), sep = "/")%>%
+    fill(Swim, T1,Bike,T2,Run)%>%
+    select(-c("Event","Race #","ToalAge","ToaGender","TotalP"))%>%
+    mutate_at(c(5:6,1),as.numeric)%>%
+    filter(str_detect(category,"(^F|^M)(?=\\d)"))%>%
+    mutate(category=as.factor(category))%>%
+    mutate(gender = ifelse(str_detect(category,"F"),"F","M"))%>%
+    mutate(year = as.factor(y))%>%
+    mutate(category = str_replace(category,"[A-Z]",""))%>%
+    filter(!is.na(Time))
+}
+
+wasaData18c <- cleandata(wasaData18,2018)
+wasaData17c <- cleandata(wasaData17,2017)
+wasaData16c <- cleandata(wasaData16,2016)
+wasaData15c <- cleandata(wasaData15,2015)
+
+wasaData <- bind_rows(wasaData18c,wasaData17c,wasaData16c,wasaData15c)
+wasaData$year <- as.factor(wasaData$year) 
+wasaDataF <- wasaData %>%
+  filter(year == 2018)%>%
+                filter((category=="3034" & gender=="F"))
+yLabels <- function(x)
+{
+  x <- seconds_to_period(x)
+  paste(hour(x),minute(x),second(x), sep = ':')
+}
+```
+
+## Wasa Triathlon EDA App. 
+In this exploratory data analysis project, we will explore the 2018 results for the Olympic race distance (1.5 km swim, 40 km bike ,10 km run). I retrieved the data from the official timing company’s websiteand a copy of the file is available in the GitHub folderof the project."
+
+In its promotional campaign, the race is described as: “Gerick Sports Wasa Lake Triathlon features elite prize money and attracts some of the fastest triathletes in the West. Age groupers and elites compete together on a scenic and fast course.” Wasa Lake is located in the beautiful province of British Columbia just west from the Rocky Mountains and 4 hours away from Calgary.
+
+
+              
+
+
+## Use of the App
+
+To check the reulst you have two tab option: Overall results and by Categories. 
+
+After Selection you will have the option to filter the results by gender and year. You can select multiple years to compare
+
+
+## Results 
+An example  graph from the overall tab is time vs position in the race for all years. We could see how 2018 was the slowest of the last five years 
+```{r Results, echo = TRUE,fig.width=4,fig.height=2.5,fig.align='center'}
+  ggplot(data = wasaData, aes(x= Position, y = Time, color=year))+
+            geom_point()+
+            theme_light()
+```
+
+## Results
+Another useful information is to be able to compare the time for each cactegory in each sport. In tab "Categories" we can compare between all the variable.
+
+```{r echo =TRUE,fig.width=4,fig.height=2.5,fig.align='center'}
+            ggplot(data = wasaDataF, aes( y = Run, x=AgePosition,color =year))+
+              geom_line()+
+              geom_point()
+          
+```
+
