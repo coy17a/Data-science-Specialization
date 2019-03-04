@@ -1,0 +1,23 @@
+---
+title: "Week2DDP"
+author: "Alejandro Coy"
+date: '2019-02-27'
+output: ioslides_presentation
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+```
+
+## Developing Data Products Project 1
+
+### February 27/2019
+```{r}
+library(leaflet)
+my_map <- leaflet() %>%
+  addTiles()%>%
+  addMarkers(lat = 51.044308 , lng =-114.06527,popup = "Clagary Tower")
+my_map
+```
+
+

@@ -1,0 +1,35 @@
+---
+title: "Week3Project"
+author: "Alejandro Coy"
+date: '2019-02-27'
+output: ioslides_presentation
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+library(dplyr)
+library(readxl)
+library(lubridate)
+library(plotly)
+```
+
+## Wasa Triathlon Distribution Time (Feb 27/2019)
+```{r}
+
+wasaData <- read_excel("~/Dropbox/usbBackup/WebCoy/data/DataScience Projects/EDA Wasa Triathlon/wasaData.xlsx",sheet = "2018")
+wasaData$Swim <- ymd_hms(wasaData$Swim)
+
+wasaM <- wasaData %>%
+  filter(grepl("M",`20`) )
+wasaF <- wasaData %>%
+  filter(grepl("F",`20`) )
+
+plot_ly(alpha = 0.5)%>%
+  add_histogram(x = wasaM$Time, name ="Male") %>%
+  add_histogram(x = wasaF$Time, name = "Female")%>%
+  layout(barmode ="overlay", title = "Distribution Time Wasa triathlon",
+                  xaxis= list(title = "Time(h)"), yaxis = list(title = "Athlete"))
+```
+
+
+

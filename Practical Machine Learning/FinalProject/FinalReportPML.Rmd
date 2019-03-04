@@ -1,0 +1,110 @@
+---
+title: "FinalProjectPML"
+author: "Alejandro Coy"
+date: '2019-03-04'
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(dplyr)
+library(caret)
+library(ggplot2)
+library(readr)
+```
+
+## Prediction Weight Lifting 
+
+### Background : 
+
+Using devices such as Jawbone Up, Nike FuelBand, and Fitbit it is now possible to collect a large amount of data about personal activity relatively inexpensively. These type of devices are part of the quantified self movement – a group of enthusiasts who take measurements about themselves regularly to improve their health, to find patterns in their behavior, or because they are tech geeks. One thing that people regularly do is quantify how much of a particular activity they do, but they rarely quantify how well they do it. In this project, your goal will be to use data from accelerometers on the belt, forearm, arm, and dumbell of 6 participants. They were asked to perform barbell lifts correctly and incorrectly in 5 different ways.
+
+### Data Wrangling 
+
+The first task is to load the training and testing data sets. Then we study the dataset using str() funciton from dplyr package.  
+
+```{r echo = FALSE}
+training <- read_csv("pml-training.csv")
+validation <- read_csv("pml-testing.csv")
+str(training)
+```
+
+The goal of the projet is to predict the maner in which the person lift the weight. This information is avaialbe in the column "classe". In order to able to run the models we transforms this column to factor. 
+
+After futher exploration is determined that not all columns we will be useful due to the amount of missing data. For this reason these columns were dropped from both training and testing data set. 
+
+```{r }
+training$classe <- factor(training$classe)
+
+training <- training %>%
+  select(-c(1:7))%>%
+select(matches("^roll|^pitch|^yaw|^total|^gyros|^accel|^magnet"), classe)
+validation <- validation %>%
+  select(-c(1:7))%>%
+  select(matches("^roll|^pitch|^yaw|^total|^gyros|^accel|^magnet"))
+```
+
+### Model Selection
+
+The first step it is to split the the training set further in training and testing. The testing set provided does not contain the outcome, so for this reason it is not useful to test our model. This data set is considered validation set.
+
+```{r}
+train_df <- createDataPartition(training$classe, p =0.7, list = FALSE) 
+train1 <- training[train_df,]
+test1 <- training[-train_df,]
+```
+
+The next step is to create a unique train control method. This allow us to make a fair comparision between the models.
+
+```{r}
+trControl <- trainControl(method = "cv", number = 5)
+```
+
+### Model1: Recursive Partitioning for Classification(rpart)
+
+First we will implement the simple tree classification using caret and the rpart function. We test the quality of the model using the confussinMatrix function from the caret packgage.
+```{r}
+model1 <- train(classe ~. ,data = train1, method ="rpart", trControl =trControl )
+p1 <- predict(model1, test1)  
+confusionMatrix(p1,test1$classe)
+plot(model1)
+```
+
+For this data set this simple approach lead to very low accuracy, it is even worse than 50% random guess.
+
+### Model2: Random Forest
+
+The second approch is to use the ramdom forest where multiple tree decission trees are evaluated simulstaniously. 
+
+
+```{r}
+model2 <- train(classe ~. ,data = train1, method ="rf", trControl =trControl,verbose = FALSE)
+p2 <- predict(model2, test1)  
+confusionMatrix(p2,test1$classe)
+plot(model2)
+```
+
+The accuracy jumps to 99.3 %. From the plot of the model can be seen than the optimum number of predictor is close to 28. 
+
+### Model3: Gradient Boosting Machine (gbm) 
+
+Althouhg random forest seems like already a very accurate solution, the gbm method was tested. 
+
+```{r}
+model3 <- train(classe ~. ,data = train1, method ="gbm", trControl =trControl,verbose = FALSE)
+p3 <- predict(model3, test1)  
+confusionMatrix(p3,test1$classe)
+plot(model3)
+```
+
+For this problem, the gbm produce a good result with 96.38 accuracy but still slightly worse than random forest. 
+
+### Using the validation set
+
+Finally we will use the random forest model in our validation set to be able to predict the 20 new data points:
+
+```{r}
+pfinal <- predict(model2, newdata = validation)
+pfinal
+```
+

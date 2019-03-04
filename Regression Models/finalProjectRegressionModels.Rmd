@@ -1,0 +1,121 @@
+---
+title: "ProjectRegressionModels"
+author: "Alejandro Coy"
+date: '2019-02-23'
+output:
+  pdf_document: default
+  word_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Peer-graded Assignment: Regression Models Course Project
+
+###Executivy summary 
+
+The main objective of this projet is to apply the regressions model to answer the following questions : 
+
+1. “Is an automatic or manual transmission better for MPG”?
+2. "Quantify the MPG difference between automatic and manual transmissions" ? 
+
+Using exploratory data anlysis the difference between automatic and manual transmission cars was evident. Furthermore a t test was perfomed for the two groups showing a significant difference between the groups, showing the automatic cats achived less MPG than manual cars. 
+
+For quantifiy the difference a linear regrtession model was used. Thre models were tested with differente explanatory variables.  With the best model it was determined that to have a manual transmission increase 1.63 MPG when all the other variable are held constant. 
+
+### Exploratory Data Analysis
+
+The dataset is preload in Rstudio. The columns with categorical value were changd to factor using the mutate function. 
+
+```{r}
+library(dplyr)
+library(ggplot2) 
+library(GGally)
+
+data <- mtcars %>%
+  mutate_at(c("cyl","gear","carb","am","vs"), as.factor)
+levels(data$am) <- list(automatic="0", manual="1")
+```
+
+A serie of plots using ggpairs and gplot were done to see the relationship between MPG and the varaible (see APEENDIX)  
+
+The first exploration indicates that manual cars yield higher MPG.
+
+### T-Test
+
+In order to perform  a t-test the data was divided depending on the type of transmission. Then the t.test function was performed:
+
+```{r echo = FALSE}
+automatic <- data %>%
+  filter(am =="automatic" )
+manual<- data %>%
+  filter(am =="manual")
+```
+```{r }
+t.test(automatic$mpg,manual$mpg,paired = FALSE)
+
+```
+
+As can be seen there is a significant diffrente with a lower mean for automatic cars.  The interval confidence does not contain 0 and p value is lowwer than 0.05
+
+### Regression models
+
+In order to quantify the difference between automatic and manual transmissions three linear models were used. 
+
+#### Model 1 
+Model 1 just consider the type of tranmission (am) as explanatory varaible
+
+```{r echo=FALSE}
+model1 <- lm(mpg ~ am, data = data)
+```
+
+The coefficient of the am variable indicates that the use of manual transmission increase 7.245 MPG, However, the R-squared is low indicating the change in transmission can just explain 35.9% the variation of the MPG. 
+
+#### Model2
+
+The model 2 take in consideration the variable that seem to have influence according to the pair plot from the EDA: 
+
+```{r echo=FALSE}
+model2 <- lm(mpg ~hp + drat + am + wt  , data= data)
+```
+
+The R-square for this model is 0.8428 with Adjusted R-squared : 0.8196. This indicates a better model. The residual plot are distributed around 0 which indicates a good fitting model. 
+
+### Model3 
+
+Finlaly model 3 take in considreation all the variables
+
+```{r echo = TRUE}
+model3 <- lm(mpg ~., data= data)
+```
+
+The R-square for this model is 0.8931, but an Adjusted R-squared : 0.779. This is an indication of overfitting of the model.  Finally we can compare between the models using the anova anlysis:
+```{r echo = TRUE}
+anova(model1,model2,model3)
+```
+From this results we can conclude there is not need to add all the variables in model 3 since there is not significant difference in the predections. However in comparison with model 1, model 2 does a significant better job (p-value lower than 0.05).
+
+### APPENDIX
+
+GRID PLOTS
+
+```{r }
+ggpairs(mtcars)
+ggplot(data = mtcars, aes(y =am, x = mpg))+
+  geom_point()
+```
+
+MEAN MPG FOR DIFFERENT TYPE OF TRANSMISSION
+
+```{r echo-TRUE}
+ggplot(data = data)+
+  aes(x = am, y = mpg,fill=am)+
+  geom_boxplot()
+```
+
+REISIDUAL PLOT FOR MODEL 2
+```{R}
+qplot(predict(model2), resid(model2))
+```
